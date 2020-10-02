@@ -12,6 +12,29 @@ const fileSchema = mongoose.Schema({
     s3ID: {
         type: String,
         required: true
+    },
+    metadata:{
+        type:{
+            createdBy:{
+                type: String,
+                //required: true
+            },
+            parentDirectory:{
+                type:String,
+                required: true
+            },
+            directoryHierarachy:{
+                type: String,
+                required: true
+            },
+            fileSize:{
+                type:String,
+                required: true
+            },
+
+
+        },
+        required:true
     }
 })
 
