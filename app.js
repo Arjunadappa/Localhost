@@ -20,7 +20,7 @@ app.use(busboy({
 app.get('/',(req,res) => {
     res.send('this is working');
 })
-app.use('/fileService/upload/',fileRouter);
+app.use('/fileService/',fileRouter);
 
 
 module.exports = app;  

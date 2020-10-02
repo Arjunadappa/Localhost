@@ -1,7 +1,10 @@
 const File = require("../models/file");
 const BusboyData = require("../utils/BusboyData");
 const awaitUploadStreamS3 = require("./utils/awaitUploadStreamS3.js")
+const deleteChunkS3 = require('./utils/DeleteChunkS3')
 const uuid  = require("uuid");
+const mongoose = require('../server');
+const conn = mongoose.connection;
 exports.uploadFile = async(busboy,req) => {
     const {file, filename, formData} = await BusboyData.data(busboy);
     console.log(formData);
@@ -35,4 +38,14 @@ exports.uploadFile = async(busboy,req) => {
     // return file;
     
 
+}
+exports.deleteFile = async(fileId) => {
+    const file = await File.findOne({"_id":fileId});
+    console.log(file);
+    if(!file){
+        throw "file doesnt exist"
+    }
+    const params = {Bucket: process.env.s3Bucket,Key: file.s3ID};
+    await deleteChunkS3(params);
+    await File.deleteOne({"_id":fileId});
 }

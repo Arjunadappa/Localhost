@@ -29,3 +29,19 @@ exports.upload = async(req,res) => {
 
 }
 
+exports.deleteFile = async(req,res) => {
+    try {
+        const fileId = req.body.id;
+        console.log(fileId);
+        await S3Service.deleteFile(fileId);
+        res.status(200).json({
+            status:'sucess',
+            outcome: 'deleted Succesfully'
+        })
+
+    } catch (e) {
+        const code = e.code
+        console.log(e.message, e.exception)
+        return res.status(code).send();
+    }
+}
