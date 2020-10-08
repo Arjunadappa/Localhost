@@ -11,12 +11,16 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.762.0",
+    "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
     "connect-busboy": "0.0.2",
+    "crypto": "^1.0.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
-    "uuid": "^8.3.0"
+    "uuid": "^8.3.0",
+    "validator": "^13.1.17"
   }
 }
