@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema({
     }
 
 })
-userSchema.pre('save',async(next) => {
+userSchema.pre('save',async function(next) {
     const user = this;
     if(user.isModified("password")){
         user.password = await bcrypt.hash(user.password,7);
@@ -69,7 +69,7 @@ userSchema.methods.toJSON = function() {
     delete userObject.tempTokens;
     return userObject;
 }
-userSchema.static.findByCredentials = async(email, password) => {
+userSchema.statics.findByCredentials = async(email, password) => {
 
     const user = await User.findOne({email});
 

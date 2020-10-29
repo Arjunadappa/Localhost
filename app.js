@@ -3,6 +3,7 @@ const express = require('express');
 const morgan = require('morgan');
 const fileRouter = require('./routes/files');
 const folderRouter = require('./routes/folders');
+const userRouter = require('./routes/user');
 const bodyParser = require("body-parser");
 const busboy = require("connect-busboy");
 
@@ -23,6 +24,7 @@ app.get('/',(req,res) => {
 })
 app.use('/fileService/',fileRouter);
 app.use('/folderService/',folderRouter);
+app.use('/userService/',userRouter);
 
 
 module.exports = app;  
