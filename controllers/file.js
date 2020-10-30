@@ -3,11 +3,16 @@ const S3Service = require("../service/S3Service");
 const File = require("../models/file");
 
 exports.upload = async(req,res) => {
+    if(!req.user){
+        return;
+    }
     try{
         const busboy = req.busboy;
+        const user = req.user;
+        console.log(user)
         req.pipe(busboy);
         //const {file, filename, formData} = await BusboyData.data(req);
-        const file = await S3Service.uploadFile( busboy, req);
+        const file = await S3Service.uploadFile(user, busboy, req);
         //handle error here
         //if(!file)......
 
