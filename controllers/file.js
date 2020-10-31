@@ -80,3 +80,35 @@ exports.deleteFile = async(req,res) => {
         return res.status(code).send();
     }
 }
+
+exports.getThumbnail = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try{
+        const user = req.user;
+        const id = req.params.id;
+        const decryptedThumbnail = await S3Service.getThumbnail(user, id);
+        res.send(decryptedThumbnail);
+
+    }catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}
+// exports.getFullThumbnail = async (req,res) => {
+//     if(!req.user){
+//         console.log('hello')
+//         return;
+//     }
+//     try {
+//         const user = req.user;
+//         const fileID = req.params.id;
+//         console.log(fileId);
+//         const fullThumbnail = await S3Service.getFullThumbnail(user, fileID, res);
+//         res.send(fullThumbnail);
+//     } catch (e) {
+        
+//     }
+// }
