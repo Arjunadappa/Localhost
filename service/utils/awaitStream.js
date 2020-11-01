@@ -13,9 +13,9 @@ const awaitStream = (inputSteam, outputStream, allStreamsToErrorCatch) => {
             })
             
         })
-
+        
         inputSteam.pipe(outputStream).on("finish", (data) => {
-            console.log("await stream finished")
+            console.log("await stream finished",data)
             resolve(data);
         })
     })

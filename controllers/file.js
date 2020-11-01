@@ -112,3 +112,35 @@ exports.getThumbnail = async (req,res) => {
         
 //     }
 // }
+
+exports.getDownloadToken = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const user = req.user;
+        console.log(user)
+        const tempToken = await user.generateTempAuthToken();
+        console.log(tempToken)
+        if(!tempToken) throw new Error("token not generated");
+        res.send({tempToken})
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}
+exports.downloadFile = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const user = req.user;
+        const fileID = req.params.id;
+        await S3Service.downloadFile(user, fileID, res);
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}

@@ -13,6 +13,8 @@ const crypto = require('crypto');
 const streamToBuffer = require('./utils/streamToBuffer');
 const awaitStream = require('./utils/awaitStream')
 const s3 = require("../databases/S3");
+const fs = require("fs");
+const path = require("path")
 exports.uploadFile = async(user,busboy,req) => {
     const password = user.getEncryptionKey(); 
     if (!password) throw new Error("Invalid Encryption Key")
@@ -137,4 +139,27 @@ exports.getFullThumbnail = async(user,fileID,res) => {
     const data = await awaitStream(readStream.pipe(decipher), res, allStreamsToErrorCatch);
     return data;
     
+}
+
+exports.downloadFile = async(user,fileID,res) => {
+    const currentFile = await File.findOne({"metadata.owner": user._id, "_id": fileID});
+    if (!currentFile) throw new Error("Download File Not Found");
+
+    const password = user.getEncryptionKey();
+
+    if (!password) throw new NotAuthorizedError("Invalid Encryption Key")
+
+    const IV = currentFile.metadata.IV.buffer ;
+
+    const CIPHER_KEY = crypto.createHash('sha256').update(password).digest()        
+
+    const decipher = crypto.createDecipheriv('aes256', CIPHER_KEY, IV);
+
+    res.set('Content-Type', 'binary/octet-stream');
+    res.set('Content-Disposition', 'attachment; filename="' + currentFile.filename + '"');
+    res.set('Content-Length', currentFile.metadata.fileSize.toString()); 
+    const params = {Bucket: process.env.s3Bucket, Key: currentFile.metadata.s3ID};
+    const s3ReadStream = s3.getObject(params).createReadStream();
+    const allStreamsToErrorCatch = [s3ReadStream, decipher];
+    await awaitStream(s3ReadStream.pipe(decipher), res, allStreamsToErrorCatch);
 }

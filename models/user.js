@@ -203,6 +203,39 @@ userSchema.methods.changeEncryptionKey = async function(randomKey) {
 
     await user.save();
 }
+
+userSchema.methods.generateTempAuthToken = async function() {
+
+    const iv = crypto.randomBytes(16);
+
+    const user = this ; 
+    const token = jwt.sign({_id:user._id.toString(), iv}, process.env.password, {expiresIn: "100000ms"});
+
+    const encryptionKey = user.getEncryptionKey();
+    const encryptedToken = user.encryptToken(token, encryptionKey, iv);
+
+    user.tempTokens = user.tempTokens.concat({token: encryptedToken});
+
+    await user.save();
+    return token;
+}
+
+userSchema.methods.generateTempAuthTokenVideo = async function(cookie) {
+
+    const iv = crypto.randomBytes(16);
+
+    const user = this; 
+    const token = jwt.sign({_id:user._id.toString(), cookie, iv}, process.env.password, {expiresIn:"5h"});
+
+    const encryptionKey = user.getEncryptionKey();
+    const encryptedToken = user.encryptToken(token, encryptionKey, iv);
+    
+    user.tempTokens = user.tempTokens.concat({token: encryptedToken});
+    
+    await user.save();
+    return token;
+}
+
 const User = mongoose.model("User",userSchema);
 module.exports = User;
 
