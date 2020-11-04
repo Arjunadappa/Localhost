@@ -21,4 +21,8 @@ router.patch("/make-public/:id",authMiddleware,fileController.makePublic)
 router.get("/public/info/:id/:tempToken", fileController.getPublicInfo);
 router.delete("/remove-link/:id", authMiddleware, fileController.removeLink);
 router.patch("/make-one-public/:id", authMiddleware, fileController.makeOneTimePublic);
+
+//queries
+router.get("/list", authMiddleware, fileController.getList);
+router.get("/quick-list", authMiddleware, fileController.getQuickList);
 module.exports = router

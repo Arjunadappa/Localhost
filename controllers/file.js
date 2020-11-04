@@ -2,6 +2,8 @@ const { S3 } = require("aws-sdk");
 const S3Service = require("../service/S3Service");
 const File = require("../models/file");
 const jwt = require("jsonwebtoken");
+const sortBySwitch = require("../utils/sortBySwitch");
+const createQuery = require("../utils/createQuery")
 
 exports.upload = async(req,res) => {
     if(!req.user){
@@ -242,5 +244,60 @@ exports.makeOneTimePublic = async (req,res) => {
         const code = e.code || 500;
         console.log(e);
         res.status(code).send();
+    }
+}
+
+exports.getList =  async (req,res) => {
+    if (!req.user) {
+        return
+    }
+    try {
+
+        const query = req.query;
+        const userID = req.user._id;
+        let searchQuery = query.search || "";
+        const parent = query.parent || "/";
+        let limit = query.limit || 50;
+        let sortBy = query.sortby || "DEFAULT"
+        const startAt = query.startAt || undefined
+        const startAtDate = query.startAtDate || "0"
+        const startAtName = query.startAtName || "";
+        sortBy = sortBySwitch(sortBy)
+        limit = parseInt(limit);
+        const queryObj = createQuery(userID, parent, query.sortby,startAt, startAtDate, searchQuery, startAtName);
+        console.log(queryObj,sortBy,limit)
+        const fileList = await File.find(queryObj).sort(sortBy).limit(limit);
+        if(!fileList){
+            throw new Error("files not found")
+        }
+        res.send(fileList);
+
+    } catch (e) {
+        
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send()
+    }
+}
+
+exports.getQuickList = async (req,res) => {
+    if(!req.user){
+        return 
+    }
+
+    try {
+        const userID = req.user._id;
+        const quickList = await File.find({"metadata.owner": userID})
+        .sort({uploadDate: -1})
+        .limit(10)
+        
+        if(!quickList){
+            throw new Error("no results found")
+        }
+        res.send(quickList)
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send()
     }
 }
