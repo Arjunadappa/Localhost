@@ -74,13 +74,19 @@ exports.uploadFile = async(user,busboy,req) => {
     
 
 }
-exports.deleteFile = async(fileId) => {
-    const file = await File.findOne({"_id":fileId});
+exports.deleteFile = async(userId,fileId) => {
+    const file = await File.findOne({"metadata.owner": userId,"_id":fileId});
     console.log(file);
     if(!file){
         throw "file doesnt exist"
     }
-    const params = {Bucket: process.env.s3Bucket,Key: file.s3ID};
+    if(file.metadata.thumbnailID){
+        const thumbnail = await Thumbnail.findById(file.metadata.thumbnailID);
+        const paramsThumbnail = {Bucket: process.env.s3Bucket, Key: thumbnail.s3ID};
+        await deleteChunkS3(paramsThumbnail);
+        await Thumbnail.deleteOne({_id: file.metadata.thumbnailID});
+    }
+    const params = {Bucket: process.env.s3Bucket,Key: file.metadata.s3ID};
     await deleteChunkS3(params);
     await File.deleteOne({"_id":fileId});
 }

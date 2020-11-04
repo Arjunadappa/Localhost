@@ -1,6 +1,7 @@
 const { S3 } = require("aws-sdk");
 const S3Service = require("../service/S3Service");
 const File = require("../models/file");
+const jwt = require("jsonwebtoken");
 
 exports.upload = async(req,res) => {
     if(!req.user){
@@ -35,11 +36,18 @@ exports.upload = async(req,res) => {
 }
 
 exports.renameFile = async(req,res) => {
+    if (!req.user) {
+        return;
+    }
     try{
         const fileId = req.body.id;
         const title  = req.body.title;
+        const userId = req.user._id;
         console.log(fileId);
-        const file = await File.findOneAndUpdate({"_id":fileId},{"$set": {"filename": title}},{new:true})
+        const file = await File.findOneAndUpdate({"_id":fileId,"metadata.owner":userId},{"$set": {"filename": title}},{new:true});
+        if(!file){
+            throw new Error("file to be renamed not found");
+        }
         res.send(file);
     }
     catch (e) {
@@ -52,10 +60,17 @@ exports.renameFile = async(req,res) => {
 }
 
 exports.getFileInfo = async(req,res) => {
+    if(!req.user){
+        return;
+    }
     try{
         const fileId = req.params.id;
+        const userId = req.user._id;
         console.log(fileId);
-        const file = await File.findOne({"_id":fileId});
+        const file = await File.findOne({"_id":fileId,"metadata.owner":userId});
+        if(!file){
+            throw new Error("file could not be found");
+        }
         res.send(file)
     }catch (e) {
         const code = e.code
@@ -65,10 +80,14 @@ exports.getFileInfo = async(req,res) => {
 }
 
 exports.deleteFile = async(req,res) => {
+    if(!req.user){
+        return;
+    }
     try {
+        const userId = req.user._id;
         const fileId = req.body.id;
         console.log(fileId);
-        await S3Service.deleteFile(fileId);
+        await S3Service.deleteFile(userId,fileId);
         res.status(200).json({
             status:'sucess',
             outcome: 'deleted Succesfully'
@@ -138,6 +157,87 @@ exports.downloadFile = async (req,res) => {
         const user = req.user;
         const fileID = req.params.id;
         await S3Service.downloadFile(user, fileID, res);
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}
+
+exports.makePublic = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const fileID = req.params.id;
+        const userID = req.user._id;
+        const token = await jwt.sign({_id: userID.toString()}, process.env.password);
+        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.owner": userID},{"$set": {"metadata.linkType": "public", "metadata.link": token}},{new:true});
+        console.log(file)
+        if(!file){
+            throw new Error("file not found")
+        }
+        res.send(token)
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}
+
+exports.getPublicInfo = async (req,res) => {
+    try {
+        const fileID = req.params.id;
+        const tempToken = req.params.tempToken;
+        const file = await File.findOne({"_id": fileID, "metadata.link": tempToken});
+        if(!file){
+            throw new Error("public file not found")
+        }
+        res.send(file)
+    } catch (error) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+    
+}
+
+exports.removeLink = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const fileID = req.params.id;
+        const userID = req.user._id;
+        const file = await File.findOneAndUpdate({"_id": fileID, "metadata.owner": userID}, {"$unset": {"metadata.linkType": "", "metadata.link": ""}});
+        console.log(file)
+        if(!file){
+            throw new Error("public file not found ");
+
+        }
+        res.send();
+    } catch (e) {
+        const code = e.code || 500;
+        console.log(e);
+        res.status(code).send();
+    }
+}
+
+exports.makeOneTimePublic = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const fileID = req.params.id;
+        const userID = req.user._id;
+        const token = await jwt.sign({_id: userID.toString()}, process.env.password);
+        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.owner": userID},{"$set": {"metadata.linkType": "one", "metadata.link": token}},{new:true});
+        console.log(file)
+        if(!file){
+            throw new Error("file not found")
+        }
+        res.send(token)
+        
     } catch (e) {
         const code = e.code || 500;
         console.log(e);
