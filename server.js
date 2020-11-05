@@ -17,15 +17,7 @@ const app = require('./app');
 //   process.env.DATABASE_PASSWORD
 // );
 
-mongoose
-  .connect(process.env.DATABASE, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-    useUnifiedTopology: true 
-
-  })
-  .then(() => console.log('DB connection successful!'));
+require('./databases/mongoose');
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {

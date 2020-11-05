@@ -3,7 +3,9 @@ const S3Service = require("../service/S3Service");
 const File = require("../models/file");
 const jwt = require("jsonwebtoken");
 const sortBySwitch = require("../utils/sortBySwitch");
-const createQuery = require("../utils/createQuery")
+const createQuery = require("../utils/createQuery");
+const mongoose = require("../databases/mongoose");
+const conn = mongoose.connection;
 
 exports.upload = async(req,res) => {
     if(!req.user){
@@ -46,7 +48,7 @@ exports.renameFile = async(req,res) => {
         const title  = req.body.title;
         const userId = req.user._id;
         console.log(fileId);
-        const file = await File.findOneAndUpdate({"_id":fileId,"metadata.owner":userId},{"$set": {"filename": title}},{new:true});
+        const file = await File.findOneAndUpdate({"_id":fileId,"metadata.createdBy":userId},{"$set": {"filename": title}},{new:true});
         if(!file){
             throw new Error("file to be renamed not found");
         }
@@ -69,7 +71,7 @@ exports.getFileInfo = async(req,res) => {
         const fileId = req.params.id;
         const userId = req.user._id;
         console.log(fileId);
-        const file = await File.findOne({"_id":fileId,"metadata.owner":userId});
+        const file = await File.findOne({"_id":fileId,"metadata.createdBy":userId});
         if(!file){
             throw new Error("file could not be found");
         }
@@ -174,7 +176,7 @@ exports.makePublic = async (req,res) => {
         const fileID = req.params.id;
         const userID = req.user._id;
         const token = await jwt.sign({_id: userID.toString()}, process.env.password);
-        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.owner": userID},{"$set": {"metadata.linkType": "public", "metadata.link": token}},{new:true});
+        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.createdBy": userID},{"$set": {"metadata.linkType": "public", "metadata.link": token}},{new:true});
         console.log(file)
         if(!file){
             throw new Error("file not found")
@@ -211,7 +213,7 @@ exports.removeLink = async (req,res) => {
     try {
         const fileID = req.params.id;
         const userID = req.user._id;
-        const file = await File.findOneAndUpdate({"_id": fileID, "metadata.owner": userID}, {"$unset": {"metadata.linkType": "", "metadata.link": ""}});
+        const file = await File.findOneAndUpdate({"_id": fileID, "metadata.createdBy": userID}, {"$unset": {"metadata.linkType": "", "metadata.link": ""}});
         console.log(file)
         if(!file){
             throw new Error("public file not found ");
@@ -233,7 +235,7 @@ exports.makeOneTimePublic = async (req,res) => {
         const fileID = req.params.id;
         const userID = req.user._id;
         const token = await jwt.sign({_id: userID.toString()}, process.env.password);
-        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.owner": userID},{"$set": {"metadata.linkType": "one", "metadata.link": token}},{new:true});
+        const file = await File.findOneAndUpdate({"_id": fileID,"metadata.createdBy": userID},{"$set": {"metadata.linkType": "one", "metadata.link": token}},{new:true});
         console.log(file)
         if(!file){
             throw new Error("file not found")
@@ -266,7 +268,7 @@ exports.getList =  async (req,res) => {
         limit = parseInt(limit);
         const queryObj = createQuery(userID, parent, query.sortby,startAt, startAtDate, searchQuery, startAtName);
         console.log(queryObj,sortBy,limit)
-        const fileList = await File.find(queryObj).sort(sortBy).limit(limit);
+        const fileList = await conn.db.collection('files').find(queryObj).sort(sortBy).limit(limit).toArray();
         if(!fileList){
             throw new Error("files not found")
         }
@@ -287,9 +289,12 @@ exports.getQuickList = async (req,res) => {
 
     try {
         const userID = req.user._id;
-        const quickList = await File.find({"metadata.owner": userID})
+        console.log(conn.db)
+        const quickList = await conn.db.collection('files').find({"metadata.createdBy": userID})
         .sort({uploadDate: -1})
         .limit(10)
+        .toArray()
+        
         
         if(!quickList){
             throw new Error("no results found")

@@ -42,7 +42,7 @@ exports.uploadFile = async(user,busboy,req) => {
         parentDirectory,
         directoryHierarachy,
         fileSize,
-        owner: user._id,
+        createdBy: user._id,
         hasThumbnail,
         thumbnailID,
         isVideo,
@@ -75,7 +75,7 @@ exports.uploadFile = async(user,busboy,req) => {
 
 }
 exports.deleteFile = async(userId,fileId) => {
-    const file = await File.findOne({"metadata.owner": userId,"_id":fileId});
+    const file = await File.findOne({"metadata.createdBy": userId,"_id":fileId});
     console.log(file);
     if(!file){
         throw "file doesnt exist"
@@ -99,7 +99,7 @@ exports.getThumbnail = async(user, id) => {
 
    const thumbnail = await Thumbnail.findById(id);
 
-   if (thumbnail.owner !== user._id.toString()) {
+   if (thumbnail.createdBy !== user._id.toString()) {
 
        throw new Error('Thumbnail Unauthorized Error');
    }
@@ -123,7 +123,7 @@ exports.getThumbnail = async(user, id) => {
 
 exports.getFullThumbnail = async(user,fileID,res) => {
     const userID = user._id;
-    const file = await File.findOne({"metadata.owner": userID, "_id": new ObjectID(fileID)});
+    const file = await File.findOne({"metadata.createdBy": userID, "_id": new ObjectID(fileID)});
     if (!file) throw new Error("File Thumbnail Not Found");
 
     const password = user.getEncryptionKey();
@@ -148,7 +148,7 @@ exports.getFullThumbnail = async(user,fileID,res) => {
 }
 
 exports.downloadFile = async(user,fileID,res) => {
-    const currentFile = await File.findOne({"metadata.owner": user._id, "_id": fileID});
+    const currentFile = await File.findOne({"metadata.createdBy": user._id, "_id": fileID});
     if (!currentFile) throw new Error("Download File Not Found");
 
     const password = user.getEncryptionKey();

@@ -3,8 +3,12 @@ const Folder = require("../models/folder");
 
 
 exports.uploadFolder = async(req,res) => {
+    if(!req.user){
+        return;
+    }
     try {
-        const folder = new Folder(req.body);
+        const data = {...req.body,createdBy:req.user._id};
+        const folder = new Folder(data);
         await folder.save();
         if(!folder) throw "folder not uploded";
         res.send(folder);
