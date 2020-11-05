@@ -1,10 +1,11 @@
 const File = require("../models/file");
+const Folder  =  require("../models/folder");
 const Thumbnail = require("../models/thumbnail")
 const BusboyData = require("../utils/BusboyData");
 const awaitUploadStreamS3 = require("./utils/awaitUploadStreamS3.js")
 const deleteChunkS3 = require('./utils/DeleteChunkS3')
 const uuid  = require("uuid");
-const mongoose = require('../server');
+const mongoose = require('../databases/mongoose');
 const conn = mongoose.connection;
 const videoChecker = require("./utils/isVideo");
 const isImage = require("./utils/isImage")
@@ -168,4 +169,74 @@ exports.downloadFile = async(user,fileID,res) => {
     const s3ReadStream = s3.getObject(params).createReadStream();
     const allStreamsToErrorCatch = [s3ReadStream, decipher];
     await awaitStream(s3ReadStream.pipe(decipher), res, allStreamsToErrorCatch);
+}
+
+exports.deleteFolder = async (userID,folderID,directoryHierarachy) => {
+    const parentListString = directoryHierarachy.toString()
+    const fileList = await conn.db.collection('files').find({"metadata.createdBy": userID, 
+    "metadata.directoryHierarachy":  {$regex : `.*${parentListString}.*`}}).toArray();
+    console.log(fileList)
+    if(!fileList){
+       throw new Error('file list not found')
+    }
+    for (let i = 0; i < fileList.length; i++) {
+
+        const currentFile = fileList[i];
+
+        try {
+            
+            if (currentFile.metadata.thumbnailID) {
+
+                const thumbnail = await Thumbnail.findById(currentFile.metadata.thumbnailID);
+                const paramsThumbnail = {Bucket: process.env.s3Bucket, Key: thumbnail.s3ID};
+                await deleteChunkS3(paramsThumbnail);
+                await Thumbnail.deleteOne({_id: currentFile.metadata.thumbnailID});
+            }
+                
+            const params= {Bucket: process.env.s3Bucket, Key: currentFile.metadata.s3ID};
+            await deleteChunkS3(params);
+            await File.deleteOne({_id: currentFile._id});
+
+        } catch (e) {
+
+            console.log(e, currentFile.filename, currentFile._id);
+            throw new Error("could not delete file")
+        }
+       
+    }
+    await Folder.deleteMany({"createdBy": userID, "directoryHierarachy": { $all: directoryHierarachy}});
+    await Folder.deleteMany({"createdBy": userID, "_id": folderID}); 
+
+}
+
+exports.deleteAll = async (userID) => {
+    const fileList = await conn.db.collection('files').find({"metadata.createdBy": userID}).toArray();
+    console.log(fileList);
+    if(!fileList) throw new Error('files and folder could not be fetched');
+    for (let i = 0; i < fileList.length; i++) {
+
+        const currentFile = fileList[i];
+
+        try {
+            
+            if (currentFile.metadata.thumbnailID) {
+
+                const thumbnail = await Thumbnail.findById(currentFile.metadata.thumbnailID);
+                const paramsThumbnail = {Bucket: process.env.s3Bucket, Key: thumbnail.s3ID};
+                await deleteChunkS3(paramsThumbnail);
+                await Thumbnail.deleteOne({_id: currentFile.metadata.thumbnailID});
+            }
+                
+            const params= {Bucket: process.env.s3Bucket, Key: currentFile.metadata.s3ID};
+            await deleteChunkS3(params);
+            await File.deleteOne({_id: currentFile._id});
+
+        } catch (e) {
+
+            console.log(e, currentFile.filename, currentFile._id);
+            throw new Error("could not delete file")
+        }
+       
+    }
+    await Folder.deleteMany({"createdBy": userID});
 }
