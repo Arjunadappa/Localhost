@@ -6,7 +6,7 @@ const thumbnailSchema = new mongoose.Schema({
         type: String, 
         required: true,
     },
-    owner: {
+    createdBy: {
         type: String, 
         required: true
     },

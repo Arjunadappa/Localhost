@@ -159,7 +159,9 @@ exports.downloadFile = async (req,res) => {
     }
     try {
         const user = req.user;
+        console.log(user)
         const fileID = req.params.id;
+        console.log(fileID)
         await S3Service.downloadFile(user, fileID, res);
     } catch (e) {
         const code = e.code || 500;

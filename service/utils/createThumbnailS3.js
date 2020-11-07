@@ -57,7 +57,7 @@ const createThumbnailS3 = (file, filename, user) => {
                     reject("Amazon upload error");
                 }
 
-                const thumbnailModel = new Thumbnail({name: thumbnailFilename, owner: user._id, IV: thumbnailIV, s3ID: thumbnailFilename});
+                const thumbnailModel = new Thumbnail({name: thumbnailFilename, createdBy: user._id, IV: thumbnailIV, s3ID: thumbnailFilename});
 
                 await thumbnailModel.save();
                 const getUpdatedFile = await File.findOneAndUpdate({"_id": file._id}, {"$set": {"metadata.hasThumbnail": true, "metadata.thumbnailID": thumbnailModel._id}},{new:true})

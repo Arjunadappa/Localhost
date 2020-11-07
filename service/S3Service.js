@@ -59,10 +59,12 @@ exports.uploadFile = async(user,busboy,req) => {
         uploadDate:date.toISOString(),
         metadata
     })
+    console.log(fileTobeUploaded)
     await fileTobeUploaded.save()
     const imageCheck = isImage(fileTobeUploaded.filename);
     if(fileTobeUploaded.length < 5242880 && imageCheck){
         const updatedFile = await createThumbnailS3(fileTobeUploaded, filename, user);
+        console.log(updatedFile)
         return updatedFile;
     }else{
         console.log('uploaded file bigger than 5mb or not image')
@@ -150,6 +152,7 @@ exports.getFullThumbnail = async(user,fileID,res) => {
 
 exports.downloadFile = async(user,fileID,res) => {
     const currentFile = await File.findOne({"metadata.createdBy": user._id, "_id": fileID});
+    console.log(currentFile)
     if (!currentFile) throw new Error("Download File Not Found");
 
     const password = user.getEncryptionKey();
@@ -164,7 +167,7 @@ exports.downloadFile = async(user,fileID,res) => {
 
     res.set('Content-Type', 'binary/octet-stream');
     res.set('Content-Disposition', 'attachment; filename="' + currentFile.filename + '"');
-    res.set('Content-Length', currentFile.metadata.fileSize.toString()); 
+    //res.set('Content-Length', 'currentFile.metadata.fileSize.toString()'); 
     const params = {Bucket: process.env.s3Bucket, Key: currentFile.metadata.s3ID};
     const s3ReadStream = s3.getObject(params).createReadStream();
     const allStreamsToErrorCatch = [s3ReadStream, decipher];
