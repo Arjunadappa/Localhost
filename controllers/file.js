@@ -1,6 +1,7 @@
 const { S3 } = require("aws-sdk");
 const S3Service = require("../service/S3Service");
 const File = require("../models/file");
+const Folder = require("../models/folder");
 const jwt = require("jsonwebtoken");
 const sortBySwitch = require("../utils/sortBySwitch");
 const createQuery = require("../utils/createQuery");
@@ -71,11 +72,32 @@ exports.getFileInfo = async(req,res) => {
         const fileId = req.params.id;
         const userId = req.user._id;
         console.log(fileId);
-        const file = await File.findOne({"_id":fileId,"metadata.createdBy":userId});
-        if(!file){
+        const currentFile = await File.findOne({"_id":fileId,"metadata.createdBy":userId});
+        if(!currentFile){
             throw new Error("file could not be found");
         }
-        res.send(file)
+        const parentID = currentFile.metadata.parentDirectory;
+        let parentName = ""; 
+        if (parentID === "/") {
+    
+            parentName = "Home"
+    
+        } else {
+    
+            const parentFolder = await Folder.findOne({"createdBy": userID, "_id": parentID});
+                
+            if (parentFolder) {
+    
+                parentName = parentFolder.name;
+    
+            } else {
+    
+                parentName = "Unknown"
+            }
+    
+        }
+    
+        res.send({currentFile,parentName})
     }catch (e) {
         const code = e.code
         console.log(e.message, e.exception)
@@ -307,4 +329,22 @@ exports.getQuickList = async (req,res) => {
         console.log(e);
         res.status(code).send()
     }
+}
+
+exports.getPublicDownload = async (req,res) => {
+    try {
+
+        const ID = req.params.id;
+        const tempToken = req.params.tempToken;
+
+        await S3.getPublicDownload(ID, tempToken, res);
+
+    } catch (e) {
+
+        const code = e.code || 500;
+        const message = e.message || e;
+
+        console.log(message, e);
+        res.status(code).send();
+    } 
 }

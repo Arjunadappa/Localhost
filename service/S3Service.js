@@ -1,5 +1,6 @@
 const File = require("../models/file");
 const Folder  =  require("../models/folder");
+const User = require("../models/user");
 const Thumbnail = require("../models/thumbnail")
 const BusboyData = require("../utils/BusboyData");
 const awaitUploadStreamS3 = require("./utils/awaitUploadStreamS3.js")
@@ -169,6 +170,7 @@ exports.downloadFile = async(user,fileID,res) => {
     res.set('Content-Disposition', 'attachment; filename="' + currentFile.filename + '"');
     //res.set('Content-Length', 'currentFile.metadata.fileSize.toString()'); 
     const params = {Bucket: process.env.s3Bucket, Key: currentFile.metadata.s3ID};
+    console.log(s3.getObject(params))
     const s3ReadStream = s3.getObject(params).createReadStream();
     const allStreamsToErrorCatch = [s3ReadStream, decipher];
     await awaitStream(s3ReadStream.pipe(decipher), res, allStreamsToErrorCatch);
@@ -242,4 +244,42 @@ exports.deleteAll = async (userID) => {
        
     }
     await Folder.deleteMany({"createdBy": userID});
+}
+
+exports.getPublicDownload = async (fileID, tempToken, res) => {
+        const file = await File.findOne({"_id": fileID});
+
+        if (!file || !file.metadata.link || file.metadata.link !== tempToken) {
+            throw new Error("File Not Public");
+        }
+
+        const user = await User.findById(file.metadata.createdBy);
+
+        const password = user.getEncryptionKey();
+
+        if (!password) throw new NotAuthorizedError("Invalid Encryption Key");
+
+        const IV = file.metadata.IV.buffer;
+                   
+        const params = {Bucket: process.env.s3Bucket, Key: file.metadata.s3ID};
+
+        const readStream = s3.getObject(params).createReadStream();
+        
+        const CIPHER_KEY = crypto.createHash('sha256').update(password).digest()        
+
+        const decipher = crypto.createDecipheriv('aes256', CIPHER_KEY, IV);
+    
+        res.set('Content-Type', 'binary/octet-stream');
+        res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
+        //res.set('Content-Length', file.metadata.size.toString());
+
+        const allStreamsToErrorCatch = [readStream, decipher];
+
+        await awaitStream(readStream.pipe(decipher), res, allStreamsToErrorCatch);
+
+        if (file.metadata.linkType === "one") {
+            console.log("removing public link");
+            await File.findOneAndUpdate({"_id":fileID}, {
+                "$unset": {"metadata.linkType": "", "metadata.link": ""}})
+        }
 }

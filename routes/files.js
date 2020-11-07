@@ -9,7 +9,8 @@ router.post("/upload/",authMiddleware,fileController.upload);
 router.delete("/delete/",authMiddleware,fileController.deleteFile)
 router.patch("/rename",authMiddleware,fileController.renameFile)
 router.get('/fileInfo/:id',authMiddleware,fileController.getFileInfo)//has to further implemented after folders is set up
-router.get("/download/:id",authMiddleware,fileController.downloadFile)
+router.get("/download/:id",authMiddleware,fileController.downloadFile);
+router.get("/public/download/:id/:tempToken", fileController.getPublicDownload);
 //thumbnail
 router.get("/thumbnail/:id", authMiddleware, fileController.getThumbnail);//returns Buffer
 //router.get("/full-thumbnail/:id", authMiddleware, fileController.getFullThumbnail);
