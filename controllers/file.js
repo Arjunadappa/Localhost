@@ -369,3 +369,26 @@ exports.getQuickList = async (req,res) => {
         res.status(code).send();
     }
 }
+
+exports.getSuggestedList = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const userID = req.user._id;
+        let searchQuery = req.query.search || "";
+        searchQuery = new RegExp(searchQuery, 'i')
+        const fileList = await conn.db.collection("files")
+        .find({"metadata.createdBy": userID, "filename": searchQuery})
+        .limit(10)
+        .toArray();
+        const folderList = await Folder.find({"owner": userID, "name": searchQuery}).limit(10);
+        if (!fileList || !folderList) throw new Error("Suggested List Not Found Error");
+        res.send({fileList,folderList})
+    } catch (e) {
+        const code = e.code || 500;
+        const message = e.message || e;
+        console.log(message, e);
+        res.status(code).send();
+    }
+}

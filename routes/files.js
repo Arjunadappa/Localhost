@@ -12,6 +12,7 @@ router.get('/fileInfo/:id',authMiddleware,fileController.getFileInfo)//has to fu
 router.get("/download/:id",authMiddleware,fileController.downloadFile);
 router.get("/public/download/:id/:tempToken", fileController.getPublicDownload);
 router.get("/quick-list", authMiddleware, fileController.getQuickList);
+router.get("/suggested-list", authMiddleware, fileController.getSuggestedList);
 //thumbnail
 router.get("/thumbnail/:id", authMiddleware, fileController.getThumbnail);//returns Buffer
 //router.get("/full-thumbnail/:id", authMiddleware, fileController.getFullThumbnail);
