@@ -348,3 +348,24 @@ exports.getPublicDownload = async (req,res) => {
         res.status(code).send();
     } 
 }
+
+exports.getQuickList = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+        const userID = req.user._id;
+        const quickList = await conn.db.collection("files")
+        .find({"metadata.createdBy": userID})
+        .sort({uploadDate: -1})
+        .limit(10)
+        .toArray();
+        if(!quickList) throw new Error("List not found ")
+        res.send(quickList);
+    } catch (e) {
+        const code = e.code || 500;
+        const message = e.message || e;
+        console.log(message, e);
+        res.status(code).send();
+    }
+}

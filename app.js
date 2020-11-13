@@ -6,10 +6,12 @@ const folderRouter = require('./routes/folders');
 const userRouter = require('./routes/user');
 const bodyParser = require("body-parser");
 const busboy = require("connect-busboy");
+const cors = require('cors');
 
 ///routers to be added here 
 
 const app = express();
+app.use((cors({ origin: 'http://localhost:3000', credentials: true })));
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
