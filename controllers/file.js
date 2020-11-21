@@ -22,12 +22,7 @@ exports.upload = async(req,res) => {
         //handle error here
         //if(!file)......
 
-        res.status(200).json({
-            status:'sucess',
-            data:{
-                data:file
-            }
-        })
+        res.send(file)
         //res.send(req.busboy);
         //const file = S3Service.uploadFile(req)
         
