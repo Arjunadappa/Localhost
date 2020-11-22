@@ -17,7 +17,7 @@ router.get("/suggested-list", authMiddleware, fileController.getSuggestedList);
 router.get("/thumbnail/:id", authMiddleware, fileController.getThumbnail);//returns Buffer
 //router.get("/full-thumbnail/:id", authMiddleware, fileController.getFullThumbnail);
 
-router.get("/download/get-token", authMiddleware, fileController.getDownloadToken);
+router.get("/download-token/", authMiddleware, fileController.getDownloadToken);
 
 //access changers
 router.patch("/make-public/:id",authMiddleware,fileController.makePublic)
