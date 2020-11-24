@@ -1,6 +1,6 @@
 const createQuery = (owner , parent , sortBy , startAt , startAtDate , searchQuery, startAtName) => {
 
-    let query = {"metadata.owner": owner}
+    let query = {"metadata.createdBy": owner}
 
     if (searchQuery !== "") {
 
