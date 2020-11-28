@@ -9,8 +9,10 @@ exports.uploadFolder = async(req,res) => {
     }
     try {
         const data = {...req.body,createdBy:req.user._id};
+        console.log(data);
         const folder = new Folder(data);
         await folder.save();
+        console.log(folder);
         if(!folder) throw "folder not uploded";
         res.send(folder);
     } catch (e) {
@@ -127,6 +129,7 @@ exports.getSubFolders = async (req,res) => {
         let folder = await Folder.findOne({"createdBy": userID,"_id":folderID});
         if(!folder) throw new Error('folder not found');
         const subfolderList = folder.directoryHierarachy;
+        console.log(subfolderList)
         let folderIDList = [];
         let folderNameList = [];
         for (let i = 0; i < subfolderList.length; i++) {
@@ -143,7 +146,7 @@ exports.getSubFolders = async (req,res) => {
                 const currentFolder = await Folder.findOne({"createdBy": userID,"_id":currentSubFolderID});
 
                 folderIDList.push(currentFolder._id);
-                folderNameList.push(currentFolder.name)
+                folderNameList.push(currentFolder.folderName)
             }   
         }
         folderIDList.push(folderID);
@@ -192,5 +195,82 @@ exports.getFolderList = async (req,res) => {
         const code = e.code
         console.log(e.message, e.exception)
         return res.status(code).send();
+    }
+}
+
+exports.moveFolder = async (req,res) => {
+    if (!req.user) {
+        return;
+    }
+
+    try {
+
+        const userID = req.user._id;
+        const folderID = req.body.id;
+        const parent = req.body.parent;
+
+        let parentList = ["/"];
+
+        if (parent.length !== 1) {
+
+            const parentFile = await Folder.findOne({"createdBy": userID, "_id": parent})
+            parentList = parentFile.directoryHierarachy;
+            parentList.push(parent);
+        }
+
+        const folder = await await Folder.findOneAndUpdate({"_id": new ObjectID(folderID), 
+        "owner": userID}, {"$set": {"parentDirectory": parent, "directoryHierarachy": parentList}});
+
+        if (!folder) throw new Error("Move Folder Not Found")
+
+        const folderChilden = await await Folder.find({"parentDirectory": folderID.toString(), "createdBy": userID});
+
+        folderChilden.map( async(currentFolderChild) => {
+
+            let currentFolderChildParentList = currentFolderChild.directoryHierarachy;
+
+            const indexOfFolderID = currentFolderChildParentList.indexOf(folderID.toString());
+
+            currentFolderChildParentList = currentFolderChildParentList.splice(indexOfFolderID);
+
+            currentFolderChildParentList = [...parentList, ...currentFolderChildParentList];
+
+            currentFolderChild.parentList = currentFolderChildParentList;
+
+            await currentFolderChild.save()
+        })
+
+        const fileChildren = await conn.db.collection("fs.files")
+        .find({"metadata.createdBy": userID, 
+        "metadata.directoryHierarachy":  {$regex : `.*${folderId.toString()}.*`}}).toArray()
+
+        fileChildren.map( async(currentFileChild) => {
+
+            let currentFileChildParentList = currentFileChild.metadata.DirectoryHierarachy;
+
+            currentFileChildParentList = currentFileChildParentList.split(",");
+
+            const indexOfFolderID = currentFileChildParentList.indexOf(folderID.toString());
+
+            currentFileChildParentList = currentFileChildParentList.splice(indexOfFolderID);
+
+            currentFileChildParentList = [...parentList, ...currentFileChildParentList];
+
+            await conn.db.collection("files")
+            .findOneAndUpdate({"_id": currentFileChild._id, 
+            "metadata.createdBy": userID}, {"$set": {"metadata.parentDirectory": currentFileChild.metadata.parentDirectory, "metadata.DirectoryHierarachy": currentFileChildParentList.toString()}})
+
+        })
+    
+
+        res.send();
+
+    } catch (e) {
+
+        const code = e.code || 500
+
+        console.log(e);
+        res.status(code).send(e);
+
     }
 }

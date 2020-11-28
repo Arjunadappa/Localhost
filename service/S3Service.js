@@ -16,7 +16,11 @@ const streamToBuffer = require('./utils/streamToBuffer');
 const awaitStream = require('./utils/awaitStream')
 const s3 = require("../databases/S3");
 const fs = require("fs");
-const path = require("path")
+const path = require("path");
+const fixStartChunkLength = require("../utils/fixStartChunkLength");
+const fixEndChunkLength = require("../utils/fixEndChunkLength");
+const getPrevIVS3 = require("../utils/getPrevIVS3");
+const awaitStreamVideo =  require("../utils/awaitStreamVideo");
 exports.uploadFile = async(user,busboy,req) => {
     const password = user.getEncryptionKey(); 
     if (!password) throw new Error("Invalid Encryption Key")
@@ -76,7 +80,6 @@ exports.uploadFile = async(user,busboy,req) => {
     // await awaitUploadStreamS3(params);
     // return file;
     
-
 }
 exports.deleteFile = async(userId,fileId) => {
     const file = await File.findOne({"metadata.createdBy": userId,"_id":fileId});
@@ -177,6 +180,7 @@ exports.downloadFile = async(user,fileID,res) => {
 }
 
 exports.deleteFolder = async (userID,folderID,directoryHierarachy) => {
+    console.log(directoryHierarachy)
     const parentListString = directoryHierarachy.toString()
     const fileList = await conn.db.collection('files').find({"metadata.createdBy": userID, 
     "metadata.directoryHierarachy":  {$regex : `.*${parentListString}.*`}}).toArray();
@@ -282,4 +286,109 @@ exports.getPublicDownload = async (fileID, tempToken, res) => {
             await File.findOneAndUpdate({"_id":fileID}, {
                 "$unset": {"metadata.linkType": "", "metadata.link": ""}})
         }
+}
+
+exports.streamVideo = async(user, fileID, headers, res, req) => { 
+
+    const userID = user._id;
+    console.log(userID, fileID)
+    const currentFile = await conn.db.collection("files")
+    .findOne({"metadata.createdBy": userID, "_id": fileID});
+
+    if (!currentFile) throw new Error("Video File Not Found");
+
+    const password = user.getEncryptionKey();
+
+    if (!password) throw new Error("Invalid Encryption Key")
+
+    const fileSize = currentFile.metadata.size;
+                
+    const range = headers.range
+    const parts = range.replace(/bytes=/, "").split("-")
+    let start = parseInt(parts[0], 10)
+    let end = parts[1] 
+        ? parseInt(parts[1], 10)
+        : fileSize-1
+    const chunksize = (end-start)+1
+    const IV = currentFile.metadata.IV.buffer ;
+            
+    let head = {
+        'Content-Range': 'bytes ' + start + '-' + end + '/' + fileSize,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'video/mp4'}
+
+    let currentIV = IV;
+
+    let fixedStart = start % 16 === 0 ? start : fixStartChunkLength(start);
+
+    if (+start === 0) {
+    
+        fixedStart = 0;
+    }
+
+    const fixedEnd = fileSize % 16 === 0 ? fileSize : fixEndChunkLength(fileSize); //end % 16 === 0 ? end + 15: (fixEndChunkLength(end) - 1) + 16;
+    
+    const differenceStart = start - fixedStart;
+
+    if (fixedStart !== 0 && start !== 0) {
+    
+        currentIV = await getPrevIVS3(fixedStart - 16, currentFile.metadata.s3ID) ;
+    }
+
+    const params = {Bucket: env.s3Bucket, Key: currentFile.metadata.s3ID, Range: `bytes=${fixedStart}-${fixedEnd}`};
+
+    const s3ReadStream = s3.getObject(params).createReadStream();
+
+    const CIPHER_KEY = crypto.createHash('sha256').update(password).digest()        
+
+    const decipher = crypto.createDecipheriv('aes256', CIPHER_KEY, currentIV);
+
+    res.writeHead(206, head);
+
+    const allStreamsToErrorCatch = [s3ReadStream, decipher];
+
+    s3ReadStream.pipe(decipher);
+
+    const tempUUID = req.params.uuid;
+
+    // s3ReadStream.on("data", () => {
+    //     console.log("data", tempUUID);
+    // })
+
+    
+    // req.on("close", () => {
+    //     // console.log("Destoying read stream");
+    //     // s3ReadStream.destroy();
+    //     // console.log("Read Stream Destroyed");
+    // })
+
+    // req.on("end", () => {
+    //     console.log("ending stream");
+    //     s3ReadStream.destroy();
+    //     console.log("ended stream")
+    // })
+
+    // req.on("error", () => {
+    //     console.log("req error");
+    // })
+
+    // req.on("pause", () => {
+    //     console.log("req pause")
+    // })
+
+    // req.on("close", () => {
+    //     // console.log("req closed");
+    //     s3ReadStream.destroy();
+    // })
+
+    //req.on("")
+
+    // req.on("end", () => {
+    //     console.log("req end");
+    // })
+
+    await awaitStreamVideo(start, end, differenceStart, decipher, res, req, tempUUID, allStreamsToErrorCatch);
+    console.log("Video stream finished");
+    s3ReadStream.destroy();
 }

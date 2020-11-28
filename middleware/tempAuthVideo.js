@@ -1,8 +1,7 @@
+const User = require("../models/user");
 const jwt = require("jsonwebtoken");
-const User = require("../models/user")
 
-
-const tempAuth = async(req, res, next) => {
+const tempAuthVideo = async(req, res, next) => {
 
     try {
 
@@ -11,6 +10,11 @@ const tempAuth = async(req, res, next) => {
         const decoded = jwt.verify(token, process.env.password);
 
         const iv = decoded.iv;
+
+        if (req.params.uuid !== decoded.cookie) {
+
+            throw new Error("Cookie mismatch")
+        }
 
         const user = await User.findOne({_id: decoded._id});
         const encrpytionKey = user.getEncryptionKey();
@@ -29,23 +33,16 @@ const tempAuth = async(req, res, next) => {
         }
 
         if (!user || !tokenFound) {
-            console.log(user,tokenFound)
-            throw new Error("User Not Found")
+
+            throw new Error("User not found");
 
         } else {
 
-            user.tempTokens = user.tempTokens.filter((filterToken) => {
-            
-                return filterToken.token !== encryptedToken
-            })
-            
             await user.save();
 
             req.user = user;
             req.auth = true;
             req.encryptedTempToken = encryptedToken;
-            console.log(req.user)
-
             next();
         }
 
@@ -55,4 +52,4 @@ const tempAuth = async(req, res, next) => {
     }
 }
 
-module.exports = tempAuth;
+module.exports = tempAuthVideo;

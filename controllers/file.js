@@ -137,21 +137,21 @@ exports.getThumbnail = async (req,res) => {
         res.status(code).send();
     }
 }
-// exports.getFullThumbnail = async (req,res) => {
-//     if(!req.user){
-//         console.log('hello')
-//         return;
-//     }
-//     try {
-//         const user = req.user;
-//         const fileID = req.params.id;
-//         console.log(fileId);
-//         const fullThumbnail = await S3Service.getFullThumbnail(user, fileID, res);
-//         res.send(fullThumbnail);
-//     } catch (e) {
+exports.getFullThumbnail = async (req,res) => {
+    if(!req.user){
+        console.log('hello')
+        return;
+    }
+    try {
+        const user = req.user;
+        const fileID = req.params.id;
+        console.log(fileId);
+        const fullThumbnail = await S3Service.getFullThumbnail(user, fileID, res);
+        res.send(fullThumbnail);
+    } catch (e) {
         
-//     }
-// }
+    }
+}
 
 exports.getDownloadToken = async (req,res) => {
     if(!req.user){
@@ -332,7 +332,7 @@ exports.getPublicDownload = async (req,res) => {
         const ID = req.params.id;
         const tempToken = req.params.tempToken;
 
-        await S3.getPublicDownload(ID, tempToken, res);
+        await S3Service.getPublicDownload(ID, tempToken, res);
 
     } catch (e) {
 
@@ -377,7 +377,7 @@ exports.getSuggestedList = async (req,res) => {
         .find({"metadata.createdBy": userID, "filename": searchQuery})
         .limit(10)
         .toArray();
-        const folderList = await Folder.find({"owner": userID, "name": searchQuery}).limit(10);
+        const folderList = await Folder.find({"createdBy": userID, "folderName": searchQuery}).limit(10);
         if (!fileList || !folderList) throw new Error("Suggested List Not Found Error");
         res.send({fileList,folderList})
     } catch (e) {
@@ -387,3 +387,113 @@ exports.getSuggestedList = async (req,res) => {
         res.status(code).send();
     }
 }
+exports.moveFile = async (req,res) => {
+    if(!req.user){
+        return;
+    }
+    try {
+    
+        const fileID = req.body.id;
+        const userID = req.user._id;
+        const parentID = req.body.parent;
+
+        console.log(fileID, userID, parentID);
+
+        let parentList = ["/"];
+
+        if (parentID.length !== 1) {
+
+            const parentFile = await Folder.findOne({"createdBy": userID, "_id": parentID});
+            if (!parentFile) throw new Error("Rename Parent File Not Found Error")
+            const parentList = parentFile.directoryHierarachy;
+            parentList.push(parentID);
+        }
+
+        const file = await conn.db.collection("files")
+        .findOneAndUpdate({"_id":fileID, 
+        "metadata.createdBy": userID}, {"$set": {"metadata.parentDirectory": parentID, "metadata.directoryHierarachy": parentList.toString()}})
+
+        if (!file.lastErrorObject.updatedExisting) throw new Error("Rename File Not Found Error");
+
+        
+
+        res.send();
+        
+    } catch (e) {
+
+        const code = e.code || 500;
+
+        console.log(e);
+        res.status(code).send()
+    }
+}
+exports.getDownloadTokenVideo = async(req, res) => {
+
+    if (!req.user) {
+        return 
+    }
+
+    try {
+
+        const user = req.user;
+        const cookie = req.headers.uuid ;
+
+        if (!cookie) throw new Error("Get Download Token Video Cookie Not Authorized Error");
+
+        const tempToken = await user.generateTempAuthTokenVideo(cookie);
+
+        if (!tempToken) throw new Error("Get Download Token Video Not Authorized Error");
+
+        
+
+        res.send({tempToken});
+
+    } catch (e) {
+
+        const code = e.code || 500;
+
+        console.log(e);
+        res.status(code).send()
+    }
+}
+
+exports.streamVideo = async(req, res) => {
+
+    if (!req.auth || !req.user) {
+        return;
+    }
+
+    try {
+
+        const user = req.user;
+        const fileID = req.params.id;
+        const headers = req.headers;
+
+        //tempStorage[req.params.uuid] = uuid.v4();
+        
+        //console.log("stream request 2", tempStorage);
+
+        // req.on("close", () => {
+        //     console.log("req closed stream");
+        // })
+
+        // req.on("abort", () => {
+        //     console.log("Aborted");
+        // })
+
+        await S3Service.streamVideo(user, fileID, headers, res, req);
+
+        //console.log("stream finished");
+
+    } catch (e) {
+
+        const code = e.code || 500;
+        const message = e.message || e;
+
+        console.log(message, e);
+        res.status(code).send();
+    }
+
+}
+
+
