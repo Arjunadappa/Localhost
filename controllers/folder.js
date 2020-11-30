@@ -1,6 +1,8 @@
 const S3Service = require("../service/S3Service");
 const Folder = require("../models/folder");
 const sortBySwitch = require('../utils/sortBySwitchFolder');
+const mongoose = require("../databases/mongoose");
+const conn = mongoose.connection;
 
 
 exports.uploadFolder = async(req,res) => {
@@ -212,20 +214,23 @@ exports.moveFolder = async (req,res) => {
         let parentList = ["/"];
 
         if (parent.length !== 1) {
-
+            console.log(parent)
             const parentFile = await Folder.findOne({"createdBy": userID, "_id": parent})
+            if(!parentFile) throw new Error("parent folder not found");
             parentList = parentFile.directoryHierarachy;
             parentList.push(parent);
+            console.log(parentList)
         }
 
-        const folder = await await Folder.findOneAndUpdate({"_id": new ObjectID(folderID), 
-        "owner": userID}, {"$set": {"parentDirectory": parent, "directoryHierarachy": parentList}});
-
+        const folder = await Folder.findOneAndUpdate({"_id": folderID, 
+        "createdBy": userID}, {"$set": {"parentDirectory": parent, "directoryHierarachy": parentList}});
+        console.log(folder);
         if (!folder) throw new Error("Move Folder Not Found")
 
-        const folderChilden = await await Folder.find({"parentDirectory": folderID.toString(), "createdBy": userID});
+        const folderChildren = await Folder.find({"parentDirectory": folderID.toString(), "createdBy": userID});
+        console.log(folderChildren)
 
-        folderChilden.map( async(currentFolderChild) => {
+        folderChildren.map( async(currentFolderChild) => {
 
             let currentFolderChildParentList = currentFolderChild.directoryHierarachy;
 
@@ -240,9 +245,9 @@ exports.moveFolder = async (req,res) => {
             await currentFolderChild.save()
         })
 
-        const fileChildren = await conn.db.collection("fs.files")
+        const fileChildren = await conn.db.collection("files")
         .find({"metadata.createdBy": userID, 
-        "metadata.directoryHierarachy":  {$regex : `.*${folderId.toString()}.*`}}).toArray()
+        "metadata.directoryHierarachy":  {$regex : `.*${folderID.toString()}.*`}}).toArray()
 
         fileChildren.map( async(currentFileChild) => {
 

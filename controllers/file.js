@@ -408,12 +408,11 @@ exports.moveFile = async (req,res) => {
             const parentList = parentFile.directoryHierarachy;
             parentList.push(parentID);
         }
-
-        const file = await conn.db.collection("files")
+        
+        const file = await File
         .findOneAndUpdate({"_id":fileID, 
-        "metadata.createdBy": userID}, {"$set": {"metadata.parentDirectory": parentID, "metadata.directoryHierarachy": parentList.toString()}})
-
-        if (!file.lastErrorObject.updatedExisting) throw new Error("Rename File Not Found Error");
+        "metadata.createdBy": userID}, {"$set": {"metadata.parentDirectory": parentID, "metadata.directoryHierarachy": parentList.toString()}},{new:true})
+        if (!file) throw new Error("Rename File Not Found Error");
 
         
 
