@@ -79,7 +79,7 @@ exports.getFileInfo = async(req,res) => {
     
         } else {
     
-            const parentFolder = await Folder.findOne({"createdBy": userID, "_id": parentID});
+            const parentFolder = await Folder.findOne({"createdBy": userId, "_id": parentID});
                 
             if (parentFolder) {
     
