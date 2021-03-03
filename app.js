@@ -11,7 +11,7 @@ const cors = require('cors');
 ///routers to be added here 
 
 const app = express();
-app.use((cors({ origin: 'http://localhost:3000', credentials: true })));
+app.use((cors({ origin: 'http://localhostdrive.s3-website.ap-south-1.amazonaws.com', credentials: true })));
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
