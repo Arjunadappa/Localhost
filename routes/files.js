@@ -1,10 +1,11 @@
 const { Route53Resolver } = require("aws-sdk");
 const express = require("express");
-const fileController = require("../controllers/file");
+const FileController = require("../controllers/file");
 const authMiddleware = require('../middleware/auth');
 const tempauth = require('../middleware/tempAuth')
 const tempAuthVideo = require('../middleware/tempAuthVideo')
 const router = express.Router();
+let fileController = new FileController();
 //FILE upload,delate,rename,info,download
 router.post("/upload/",authMiddleware,fileController.upload);
 router.delete("/delete/",authMiddleware,fileController.deleteFile)

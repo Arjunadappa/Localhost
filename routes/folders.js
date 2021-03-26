@@ -1,7 +1,8 @@
 const express = require('express');
-const folderController = require('../controllers/folder');
+const FolderController = require('../controllers/folder');
 const router = express.Router();
-const authMiddleware = require("../middleware/auth")
+const authMiddleware = require("../middleware/auth");
+const folderController = new FolderController();
 
 router.post('/upload',authMiddleware,folderController.uploadFolder);
 router.delete('/delete',authMiddleware,folderController.deleteFolder);
